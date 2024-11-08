@@ -1,0 +1,27 @@
+# Node modules
+node_modules/
+
+# Compilação do TailwindCSS
+*.css.map
+src/output.css
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Configurações do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos de cache e configurações do editor
+.vscode/
+.idea/
+*.swp
+
+# Outros arquivos de cache
+*.cache
+*.temp
+
+# Configurações do sistema operacional específico (opcional)
+Desktop.ini

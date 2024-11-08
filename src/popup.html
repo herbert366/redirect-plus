@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirect Timer Settings</title>
+    <link href="./output.css" rel="stylesheet" />
+  </head>
+  <body class="bg-gray-800 text-white p-4 rounded-md w-80">
+    <h2 class="text-lg font-semibold mb-4">Add a New Rule</h2>
+
+    <div class="mb-4">
+      <label for="badSite" class="block text-sm font-medium text-gray-300"
+        >Bad Site</label
+      >
+      <input
+        type="text"
+        id="badSite"
+        placeholder="https://example.com"
+        class="w-full px-3 py-2 mt-1 bg-gray-700 rounded-md text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+
+    <div class="mb-4">
+      <label for="redirectTo" class="block text-sm font-medium text-gray-300"
+        >Redirect To</label
+      >
+      <input
+        type="text"
+        id="redirectTo"
+        placeholder="https://redirect.com"
+        class="w-full px-3 py-2 mt-1 bg-gray-700 rounded-md text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+
+    <div class="mb-4">
+      <label for="timeLimit" class="block text-sm font-medium text-gray-300"
+        >Timer in Bad Site (seconds)</label
+      >
+      <input
+        type="number"
+        id="timeLimit"
+        placeholder="60"
+        class="w-full px-3 py-2 mt-1 bg-gray-700 rounded-md text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+
+    <button
+      id="addRule"
+      class="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded-md font-semibold text-white transition duration-150 ease-in-out"
+    >
+      Save
+    </button>
+
+    <button
+      id="openConfig"
+      class="w-full py-2 mt-4 bg-gray-600 hover:bg-gray-700 rounded-md font-semibold text-white transition duration-150 ease-in-out"
+    >
+      Configurações
+    </button>
+
+    <script src="popup.js"></script>
+    <script src="redirect.js"></script>
+  </body>
+</html>
