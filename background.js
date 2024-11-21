@@ -26,28 +26,35 @@ function clearTimerState(tabId) {
 }
 
 setInterval(() => {
-  chrome.tabs.query({ active: true, currentWindow: true }, async tabs => {
-    const activeTab = tabs[0]
-    if (!activeTab) return
+  chrome.windows.getCurrent({ populate: true }, currentWindow => {
+    if (currentWindow.focused) {
+      chrome.tabs.query({ active: true, currentWindow: true }, async tabs => {
+        const activeTab = tabs[0]
+        if (!activeTab) return
 
-    const currentUrl = activeTab.url
-    const data = await new Promise(resolve => {
-      chrome.storage.sync.get({ sites: [] }, resolve)
-    })
+        const currentUrl = activeTab.url
+        const data = await new Promise(resolve => {
+          chrome.storage.sync.get({ sites: [] }, resolve)
+        })
 
-    const siteConfig = data.sites.find(site =>
-      currentUrl.includes(site.badSite)
-    )
+        const siteConfig = data.sites.find(site =>
+          currentUrl.includes(site.badSite)
+        )
 
-    if (siteConfig) {
-      iniciarCronometro(
-        activeTab.id,
-        siteConfig.badSite,
-        siteConfig.redirectTo,
-        siteConfig.timeLimit
-      )
+        if (siteConfig) {
+          iniciarCronometro(
+            activeTab.id,
+            siteConfig.badSite,
+            siteConfig.redirectTo,
+            siteConfig.timeLimit
+          )
+        } else {
+          pararCronometro(activeTab.id)
+        }
+      })
     } else {
-      pararCronometro(activeTab.id)
+      // Se a janela não está focada, parar todos os cronômetros ativos
+      Object.keys(timers).forEach(tabId => pararCronometro(parseInt(tabId)))
     }
   })
 }, checkInterval)
@@ -149,5 +156,13 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     )
   } else if (message.action === 'stopTimer') {
     pararCronometro(sender.tab.id)
+  }
+})
+
+// Adiciona listener para mudanças de foco na janela
+chrome.windows.onFocusChanged.addListener(windowId => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    // Nenhuma janela está focada, parar todos os cronômetros ativos
+    Object.keys(timers).forEach(tabId => pararCronometro(parseInt(tabId)))
   }
 })
