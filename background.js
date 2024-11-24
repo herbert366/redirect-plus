@@ -36,6 +36,7 @@ setInterval(() => {
         console.log(
           `1° Check: Verificando se a URL ${currentUrl} está na lista de bad sites.`
         )
+
         const data = await new Promise(resolve => {
           chrome.storage.sync.get({ sites: [] }, resolve)
         })
@@ -45,15 +46,23 @@ setInterval(() => {
         )
 
         if (siteConfig) {
-          console.log(
-            `2° Check: A URL está na lista de bad sites. Iniciando cronômetro.`
-          )
-          iniciarCronometro(
-            activeTab.id,
-            siteConfig.badSite,
-            siteConfig.redirectTo,
-            siteConfig.timeLimit
-          )
+          // Verifica se a regra está ativa
+          if (siteConfig.active) {
+            console.log(
+              `2° Check: A URL está na lista de bad sites e a regra está ativa. Iniciando cronômetro.`
+            )
+            iniciarCronometro(
+              activeTab.id,
+              siteConfig.badSite,
+              siteConfig.redirectTo,
+              siteConfig.timeLimit
+            )
+          } else {
+            console.log(
+              `A URL está na lista de bad sites, mas a regra está desativada. Nenhuma ação necessária.`
+            )
+            pararCronometro(activeTab.id)
+          }
         } else {
           console.log(
             `URL não está na lista de bad sites. Nenhuma ação necessária.`
@@ -149,9 +158,13 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
       const siteConfig = data.sites.find(site => tab.url.includes(site.badSite))
 
-      if (siteConfig && tab.url.includes(timerState.site)) {
+      if (
+        siteConfig &&
+        siteConfig.active &&
+        tab.url.includes(timerState.site)
+      ) {
         console.log(
-          `5° Check: A URL redirecionada ainda está no bad site. Reiniciando cronômetro.`
+          `5° Check: A URL redirecionada ainda está no bad site e a regra está ativa. Reiniciando cronômetro.`
         )
         iniciarCronometro(
           tabId,
@@ -159,6 +172,11 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
           siteConfig.redirectTo,
           siteConfig.timeLimit
         )
+      } else {
+        console.log(
+          `A regra para o site ${siteConfig?.badSite} está desativada ou o site não corresponde. Nenhuma ação necessária.`
+        )
+        pararCronometro(tabId)
       }
     }
   }
