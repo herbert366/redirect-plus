@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Função para carregar e exibir a lista de sites configurados
 function carregarSitesConfigurados() {
-  chrome.storage.sync.get({ sites: [], groups: [] }, data => {
+  chrome.storage.sync.get({ sites: [], tags: [] }, data => {
     const configList = document.getElementById('configList')
     configList.innerHTML = ''
 
@@ -16,26 +16,34 @@ function carregarSitesConfigurados() {
       const row = document.createElement('tr')
       row.classList.add('hover:bg-gray-700')
 
-      // Coluna de Ativo
+      // Coluna de Ativo (Toggle Switch)
       const activeCell = document.createElement('td')
       activeCell.classList.add('py-2')
-      const activeSwitch = document.createElement('input')
-      activeSwitch.type = 'checkbox'
-      activeSwitch.checked = site.active
-      activeSwitch.addEventListener('change', () => {
-        atualizarStatusAtivo(index, activeSwitch.checked)
+
+      const toggleSwitch = document.createElement('label')
+      toggleSwitch.classList.add('switch')
+      toggleSwitch.innerHTML = `
+        <input type="checkbox" ${site.active ? 'checked' : ''}>
+        <span class="slider round"></span>
+      `
+
+      // Evita que o popup seja aberto ao clicar no toggle switch
+      toggleSwitch.querySelector('input').addEventListener('click', event => {
+        event.stopImmediatePropagation() // Previne que o evento de clique abra o popup e para toda propagação
+        atualizarStatusAtivo(index, event.target.checked) // Atualiza o status no armazenamento
       })
-      activeCell.appendChild(activeSwitch)
+
+      activeCell.appendChild(toggleSwitch)
 
       // Coluna de Nome
       const nameCell = document.createElement('td')
       nameCell.classList.add('py-2')
       nameCell.textContent = site.name
 
-      // Coluna de Grupo
-      const groupCell = document.createElement('td')
-      groupCell.classList.add('py-2')
-      groupCell.textContent = site.group || '-'
+      // Coluna de Tag
+      const tagCell = document.createElement('td')
+      tagCell.classList.add('py-2')
+      tagCell.textContent = site.tag || '-'
 
       // Coluna de URL Fragmento
       const urlCell = document.createElement('td')
@@ -73,14 +81,17 @@ function carregarSitesConfigurados() {
 
       deleteCell.appendChild(deleteButton)
 
-      // Adiciona evento de clique para abrir o popup de edição
-      row.addEventListener('click', () => {
-        abrirPopupEdicao(site, index)
+      // Adiciona evento de clique para abrir o popup de edição, exceto no toggle
+      row.addEventListener('click', event => {
+        // Garante que o clique no toggle não abra o modal
+        if (!event.target.closest('.switch')) {
+          abrirPopupEdicao(site, index)
+        }
       })
 
       row.appendChild(activeCell)
       row.appendChild(nameCell)
-      row.appendChild(groupCell)
+      row.appendChild(tagCell)
       row.appendChild(urlCell)
       row.appendChild(timeLimitCell)
       row.appendChild(redirectCell)
@@ -90,57 +101,8 @@ function carregarSitesConfigurados() {
   })
 }
 
-// Função para abrir um popup de edição
-function abrirPopupEdicao(site, index) {
-  chrome.storage.sync.get({ groups: [] }, data => {
-    const popup = criarPopup('Edit Rule', site, data.groups)
-
-    // Botão salvar edição
-    document.getElementById('saveEdit').addEventListener('click', () => {
-      const updatedSite = obterDadosDoPopup()
-      atualizarRegra(index, updatedSite)
-      fecharPopup(popup)
-    })
-
-    // Botão cancelar
-    document.getElementById('cancelEdit').addEventListener('click', () => {
-      fecharPopup(popup)
-    })
-  })
-}
-
-// Função para abrir um popup para adicionar uma nova regra
-function abrirPopupAdicionar() {
-  chrome.storage.sync.get({ groups: [] }, data => {
-    const popup = criarPopup(
-      'Add New Rule',
-      {
-        name: '',
-        badSite: '',
-        timeLimit: 60,
-        redirectTo: '',
-        active: false,
-        group: '',
-      },
-      data.groups
-    )
-
-    // Botão salvar nova regra
-    document.getElementById('saveEdit').addEventListener('click', () => {
-      const newSite = obterDadosDoPopup()
-      adicionarRegra(newSite)
-      fecharPopup(popup)
-    })
-
-    // Botão cancelar
-    document.getElementById('cancelEdit').addEventListener('click', () => {
-      fecharPopup(popup)
-    })
-  })
-}
-
-// Função para criar um popup de edição/adicionar
-function criarPopup(titulo, site, groups) {
+// Função para abrir um popup de edição/adicionar
+function criarPopup(titulo, site, tags) {
   const popup = document.createElement('div')
   popup.classList.add(
     'fixed',
@@ -156,29 +118,38 @@ function criarPopup(titulo, site, groups) {
   )
 
   const popupContent = document.createElement('div')
-  popupContent.classList.add('bg-gray-800', 'p-6', 'rounded-md', 'w-96')
+  popupContent.classList.add(
+    'bg-gray-800',
+    'p-6',
+    'rounded-md',
+    'w-96',
+    'relative'
+  )
 
-  // Criação das opções do grupo com a seleção do grupo atual
-  const groupOptions = groups
-    .map(group => {
-      const isSelected = site.group === group ? 'selected' : ''
-      return `<option value="${group}" ${isSelected}>${group}</option>`
+  // Criação das opções do tag com a seleção do tag atual
+  const tagOptions = tags
+    .map(tag => {
+      const isSelected = site.tag === tag ? 'selected' : ''
+      return `<option value="${tag}" ${isSelected}>${tag}</option>`
     })
     .join('')
 
-  // HTML do conteúdo do popup
   popupContent.innerHTML = `
+    <!-- Botão de fechar no canto superior direito -->
+    <button id="closePopup" class="absolute top-2 right-2 text-gray-400 hover:text-white">
+      ✖
+    </button>
     <h2 class="text-lg font-semibold mb-4">${titulo}</h2>
     <label class="block mb-2">Name</label>
     <input type="text" value="${
       site.name
     }" id="editName" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
-    <label class="block mb-2">Group</label>
-    <select id="editGroup" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
-      <option value="">-- Select Group --</option>
-      ${groupOptions}
+    <label class="block mb-2">Tag</label>
+    <select id="editTag" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
+      <option value="">-- Select Tag --</option>
+      ${tagOptions}
     </select>
-    <input type="text" id="newGroup" placeholder="Or create new group" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
+    <input type="text" id="newTag" placeholder="Or create new tag" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
     <label class="block mb-2">URL Fragment</label>
     <input type="text" value="${
       site.badSite
@@ -205,60 +176,83 @@ function criarPopup(titulo, site, groups) {
   popup.appendChild(popupContent)
   document.body.appendChild(popup)
 
+  // Evento para fechar o popup ao clicar no botão "X"
+  document.getElementById('closePopup').addEventListener('click', () => {
+    fecharPopup(popup)
+  })
+
   return popup
 }
 
-// Função para obter os dados do popup
-function obterDadosDoPopup() {
-  const groupSelect = document.getElementById('editGroup').value
-  const newGroup = document.getElementById('newGroup').value
-
-  let group = groupSelect
-  if (newGroup) {
-    group = newGroup
-    adicionarGrupo(newGroup)
-  }
-
-  return {
-    name: document.getElementById('editName').value,
-    badSite: document.getElementById('editBadSite').value,
-    timeLimit: parseInt(document.getElementById('editTimeLimit').value, 10),
-    redirectTo: document.getElementById('editRedirectTo').value,
-    active: document.getElementById('editActive').checked,
-    group: group,
-  }
-}
-
-// Função para adicionar uma nova regra ao armazenamento
-function adicionarRegra(newSite) {
-  chrome.storage.sync.get({ sites: [] }, data => {
-    data.sites.push(newSite)
-    chrome.storage.sync.set({ sites: data.sites }, () => {
-      alert('Nova regra adicionada com sucesso!')
-      carregarSitesConfigurados()
-    })
-  })
-}
-
-// Função para adicionar um novo grupo ao armazenamento
-function adicionarGrupo(newGroup) {
-  chrome.storage.sync.get({ groups: [] }, data => {
-    if (!data.groups.includes(newGroup)) {
-      data.groups.push(newGroup)
-      chrome.storage.sync.set({ groups: data.groups })
-    }
-  })
-}
-
 // Função para atualizar uma regra no armazenamento
-function atualizarRegra(index, updatedSite) {
+function atualizarRegra(index, updatedSite, callback) {
   chrome.storage.sync.get({ sites: [] }, data => {
     data.sites[index] = updatedSite
     chrome.storage.sync.set({ sites: data.sites }, () => {
-      alert('Regra atualizada com sucesso!')
-      carregarSitesConfigurados()
+      console.log('Regra atualizada com sucesso!')
+      if (callback) callback() // Executa o callback, se fornecido
     })
   })
+}
+
+// Função para abrir um popup de edição
+function abrirPopupEdicao(site, index) {
+  chrome.storage.sync.get({ tags: [] }, data => {
+    const popup = criarPopup('Edit Rule', site, data.tags)
+
+    // Botão salvar edição
+    document.getElementById('saveEdit').addEventListener('click', () => {
+      const updatedSite = obterDadosDoPopup()
+      atualizarRegra(index, updatedSite, () => {
+        alert('As mudanças foram salvas com sucesso!')
+        fecharPopup(popup)
+        carregarSitesConfigurados() // Recarrega a lista para garantir a atualização imediata no DOM
+      })
+    })
+
+    // Botão cancelar
+    document.getElementById('cancelEdit').addEventListener('click', () => {
+      fecharPopup(popup)
+    })
+  })
+}
+
+// Função para abrir um popup para adicionar uma nova regra
+function abrirPopupAdicionar() {
+  chrome.storage.sync.get({ tags: [] }, data => {
+    const popup = criarPopup(
+      'Add New Rule',
+      {
+        name: '',
+        badSite: '',
+        timeLimit: 60,
+        redirectTo: '',
+        active: true, // Define o estado padrão como ativo
+        tag: '',
+      },
+      data.tags
+    )
+
+    // Botão salvar nova regra
+    document.getElementById('saveEdit').addEventListener('click', () => {
+      const newSite = obterDadosDoPopup()
+      adicionarRegra(newSite, () => {
+        alert('Nova regra adicionada com sucesso!')
+        fecharPopup(popup)
+        carregarSitesConfigurados() // Recarrega a lista para garantir que a nova regra apareça no DOM
+      })
+    })
+
+    // Botão cancelar
+    document.getElementById('cancelEdit').addEventListener('click', () => {
+      fecharPopup(popup)
+    })
+  })
+}
+
+// Função para fechar o popup
+function fecharPopup(popup) {
+  document.body.removeChild(popup)
 }
 
 // Função para atualizar o status de ativo
@@ -270,6 +264,102 @@ function atualizarStatusAtivo(index, isActive) {
     })
   })
 }
+
+// Função para obter os dados do popup
+function obterDadosDoPopup() {
+  const tagSelect = document.getElementById('editTag').value
+  const newTag = document.getElementById('newTag').value
+
+  let tag = tagSelect
+  if (newTag) {
+    tag = newTag
+    adicionarTag(newTag)
+  }
+
+  return {
+    name: document.getElementById('editName').value,
+    badSite: document.getElementById('editBadSite').value,
+    timeLimit: parseInt(document.getElementById('editTimeLimit').value, 10),
+    redirectTo: document.getElementById('editRedirectTo').value,
+    active: document.getElementById('editActive').checked,
+    tag: tag,
+  }
+}
+
+// Função para adicionar uma nova regra ao armazenamento
+function adicionarRegra(newSite, callback) {
+  chrome.storage.sync.get({ sites: [] }, data => {
+    data.sites.push(newSite)
+    chrome.storage.sync.set({ sites: data.sites }, () => {
+      console.log('Nova regra adicionada com sucesso!')
+      if (callback) callback() // Executa o callback, se fornecido
+    })
+  })
+}
+
+// Função para adicionar uma nova tag ao armazenamento
+function adicionarTag(newTag) {
+  chrome.storage.sync.get({ tags: [] }, data => {
+    if (!data.tags.includes(newTag)) {
+      data.tags.push(newTag)
+      chrome.storage.sync.set({ tags: data.tags })
+    }
+  })
+}
+
+// CSS para o Toggle Switch
+const style = document.createElement('style')
+style.textContent = `
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #4caf50; /* Cor verde para indicar ativo */
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #4caf50;
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+`
+document.head.appendChild(style)
 
 // Função para excluir uma regra do armazenamento
 function excluirRegra(index) {
