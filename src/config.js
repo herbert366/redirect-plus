@@ -9,6 +9,18 @@ function carregarSitesConfigurados() {
     configList.innerHTML = ''
 
     data.sites.forEach((site, index) => {
+      // Criar um contêiner para cada item da lista
+      const listItemContainer = document.createElement('div')
+      listItemContainer.classList.add(
+        'flex',
+        'items-stretch',
+        'p-4', // Espaçamento interno para que não encoste nas bordas
+        'flex-grow', // Para que cada card cresça uniformemente
+        'basis-1/3', // Cada card ocupará 1/3 da linha disponível, ajustável
+        'max-w-xs', // Definindo um tamanho máximo para manter consistência
+        'box-border'
+      )
+
       const listItem = document.createElement('li')
       listItem.classList.add(
         'bg-gray-700',
@@ -16,7 +28,10 @@ function carregarSitesConfigurados() {
         'rounded-md',
         'flex',
         'flex-col',
-        'space-y-2'
+        'space-y-2',
+        'h-full', // Faz com que o card ocupe toda a altura disponível no contêiner pai
+        'min-h-[250px]', // Define uma altura mínima para os cards, para consistência visual
+        'w-full' // Garante que o card ocupe toda a largura do seu contêiner
       )
 
       const siteLabel = document.createElement('p')
@@ -70,9 +85,9 @@ function carregarSitesConfigurados() {
         'duration-150',
         'ease-in-out',
         'mx-1',
-        'text-xl', // Aumenta o tamanho do texto para o botão de editar
-        'p-2', // Adiciona padding para aumentar o tamanho do botão
-        'rounded-full' // Deixa o botão arredondado para melhor UX
+        'text-xl',
+        'p-2',
+        'rounded-full'
       )
 
       editButton.addEventListener('click', () => {
@@ -95,9 +110,9 @@ function carregarSitesConfigurados() {
         'duration-150',
         'ease-in-out',
         'mx-1',
-        'text-xl', // Aumenta o tamanho do texto para o botão de excluir
-        'p-2', // Adiciona padding para aumentar o tamanho do botão
-        'rounded-full' // Deixa o botão arredondado para melhor UX
+        'text-xl',
+        'p-2',
+        'rounded-full'
       )
 
       deleteButton.addEventListener('click', () => {
@@ -116,11 +131,15 @@ function carregarSitesConfigurados() {
       listItem.appendChild(timeInput)
       listItem.appendChild(saveButton)
       listItem.appendChild(buttonContainer)
-      configList.appendChild(listItem)
+
+      // Adicionar o listItem ao seu contêiner
+      listItemContainer.appendChild(listItem)
+
+      // Adicionar o contêiner ao configList
+      configList.appendChild(listItemContainer)
     })
   })
 }
-
 // Função para atualizar o tempo de redirecionamento no armazenamento
 function atualizarTempoSite(index, novoTempo) {
   chrome.storage.sync.get({ sites: [] }, data => {
