@@ -5,9 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
     .addEventListener('click', abrirPopupAdicionar)
 })
 
-// Função para carregar e exibir a lista de regras configuradas
+// Função para carregar e exibir a lista de sites configurados
 function carregarSitesConfigurados() {
-  chrome.storage.sync.get({ sites: [] }, data => {
+  chrome.storage.sync.get({ sites: [], groups: [] }, data => {
     const configList = document.getElementById('configList')
     configList.innerHTML = ''
 
@@ -92,61 +92,55 @@ function carregarSitesConfigurados() {
 
 // Função para abrir um popup de edição
 function abrirPopupEdicao(site, index) {
-  const popup = criarPopup('Edit Rule', site)
+  chrome.storage.sync.get({ groups: [] }, data => {
+    const popup = criarPopup('Edit Rule', site, data.groups)
 
-  // Botão salvar edição
-  document.getElementById('saveEdit').addEventListener('click', () => {
-    const updatedSite = {
-      name: document.getElementById('editName').value,
-      badSite: document.getElementById('editBadSite').value,
-      timeLimit: parseInt(document.getElementById('editTimeLimit').value, 10),
-      redirectTo: document.getElementById('editRedirectTo').value,
-      active: document.getElementById('editActive').checked,
-      group: document.getElementById('editGroup').value || '-',
-    }
-    atualizarRegra(index, updatedSite)
-    fecharPopup(popup)
-  })
+    // Botão salvar edição
+    document.getElementById('saveEdit').addEventListener('click', () => {
+      const updatedSite = obterDadosDoPopup()
+      atualizarRegra(index, updatedSite)
+      fecharPopup(popup)
+    })
 
-  // Botão cancelar
-  document.getElementById('cancelEdit').addEventListener('click', () => {
-    fecharPopup(popup)
+    // Botão cancelar
+    document.getElementById('cancelEdit').addEventListener('click', () => {
+      fecharPopup(popup)
+    })
   })
 }
 
 // Função para abrir um popup para adicionar uma nova regra
 function abrirPopupAdicionar() {
-  const popup = criarPopup('Add New Rule', {
-    name: '',
-    badSite: '',
-    timeLimit: 60,
-    redirectTo: '',
-    active: false,
-    group: '',
-  })
+  chrome.storage.sync.get({ groups: [] }, data => {
+    const popup = criarPopup(
+      'Add New Rule',
+      {
+        name: '',
+        badSite: '',
+        timeLimit: 60,
+        redirectTo: '',
+        active: false,
+        group: '',
+      },
+      data.groups
+    )
 
-  // Botão salvar nova regra
-  document.getElementById('saveEdit').addEventListener('click', () => {
-    const newSite = {
-      name: document.getElementById('editName').value,
-      badSite: document.getElementById('editBadSite').value,
-      timeLimit: parseInt(document.getElementById('editTimeLimit').value, 10),
-      redirectTo: document.getElementById('editRedirectTo').value,
-      active: document.getElementById('editActive').checked,
-      group: document.getElementById('editGroup').value || '-',
-    }
-    adicionarRegra(newSite)
-    fecharPopup(popup)
-  })
+    // Botão salvar nova regra
+    document.getElementById('saveEdit').addEventListener('click', () => {
+      const newSite = obterDadosDoPopup()
+      adicionarRegra(newSite)
+      fecharPopup(popup)
+    })
 
-  // Botão cancelar
-  document.getElementById('cancelEdit').addEventListener('click', () => {
-    fecharPopup(popup)
+    // Botão cancelar
+    document.getElementById('cancelEdit').addEventListener('click', () => {
+      fecharPopup(popup)
+    })
   })
 }
 
 // Função para criar um popup de edição/adicionar
-function criarPopup(titulo, site) {
+function criarPopup(titulo, site, groups) {
   const popup = document.createElement('div')
   popup.classList.add(
     'fixed',
@@ -164,6 +158,15 @@ function criarPopup(titulo, site) {
   const popupContent = document.createElement('div')
   popupContent.classList.add('bg-gray-800', 'p-6', 'rounded-md', 'w-96')
 
+  // Criação das opções do grupo com a seleção do grupo atual
+  const groupOptions = groups
+    .map(group => {
+      const isSelected = site.group === group ? 'selected' : ''
+      return `<option value="${group}" ${isSelected}>${group}</option>`
+    })
+    .join('')
+
+  // HTML do conteúdo do popup
   popupContent.innerHTML = `
     <h2 class="text-lg font-semibold mb-4">${titulo}</h2>
     <label class="block mb-2">Name</label>
@@ -171,9 +174,11 @@ function criarPopup(titulo, site) {
       site.name
     }" id="editName" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
     <label class="block mb-2">Group</label>
-    <input type="text" value="${
-      site.group || ''
-    }" id="editGroup" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
+    <select id="editGroup" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
+      <option value="">-- Select Group --</option>
+      ${groupOptions}
+    </select>
+    <input type="text" id="newGroup" placeholder="Or create new group" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
     <label class="block mb-2">URL Fragment</label>
     <input type="text" value="${
       site.badSite
@@ -203,9 +208,25 @@ function criarPopup(titulo, site) {
   return popup
 }
 
-// Função para fechar o popup
-function fecharPopup(popup) {
-  document.body.removeChild(popup)
+// Função para obter os dados do popup
+function obterDadosDoPopup() {
+  const groupSelect = document.getElementById('editGroup').value
+  const newGroup = document.getElementById('newGroup').value
+
+  let group = groupSelect
+  if (newGroup) {
+    group = newGroup
+    adicionarGrupo(newGroup)
+  }
+
+  return {
+    name: document.getElementById('editName').value,
+    badSite: document.getElementById('editBadSite').value,
+    timeLimit: parseInt(document.getElementById('editTimeLimit').value, 10),
+    redirectTo: document.getElementById('editRedirectTo').value,
+    active: document.getElementById('editActive').checked,
+    group: group,
+  }
 }
 
 // Função para adicionar uma nova regra ao armazenamento
@@ -216,6 +237,16 @@ function adicionarRegra(newSite) {
       alert('Nova regra adicionada com sucesso!')
       carregarSitesConfigurados()
     })
+  })
+}
+
+// Função para adicionar um novo grupo ao armazenamento
+function adicionarGrupo(newGroup) {
+  chrome.storage.sync.get({ groups: [] }, data => {
+    if (!data.groups.includes(newGroup)) {
+      data.groups.push(newGroup)
+      chrome.storage.sync.set({ groups: data.groups })
+    }
   })
 }
 
@@ -249,6 +280,11 @@ function excluirRegra(index) {
       carregarSitesConfigurados()
     })
   })
+}
+
+// Função para fechar o popup
+function fecharPopup(popup) {
+  document.body.removeChild(popup)
 }
 
 // Função para atualizar o tempo de redirecionamento no armazenamento
