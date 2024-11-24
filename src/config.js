@@ -1,106 +1,60 @@
 document.addEventListener('DOMContentLoaded', () => {
   carregarSitesConfigurados()
+  document
+    .getElementById('addRuleButton')
+    .addEventListener('click', abrirPopupAdicionar)
 })
 
-// Função para carregar e exibir a lista de sites configurados
+// Função para carregar e exibir a lista de regras configuradas
 function carregarSitesConfigurados() {
   chrome.storage.sync.get({ sites: [] }, data => {
     const configList = document.getElementById('configList')
     configList.innerHTML = ''
 
     data.sites.forEach((site, index) => {
-      // Criar um contêiner para cada item da lista
-      const listItemContainer = document.createElement('div')
-      listItemContainer.classList.add(
-        'flex',
-        'items-stretch',
-        'p-4', // Espaçamento interno para que não encoste nas bordas
-        'flex-grow', // Para que cada card cresça uniformemente
-        'basis-1/3', // Cada card ocupará 1/3 da linha disponível, ajustável
-        'max-w-xs', // Definindo um tamanho máximo para manter consistência
-        'box-border'
-      )
+      // Cria a linha da tabela para cada regra
+      const row = document.createElement('tr')
+      row.classList.add('hover:bg-gray-700')
 
-      const listItem = document.createElement('li')
-      listItem.classList.add(
-        'bg-gray-700',
-        'p-3',
-        'rounded-md',
-        'flex',
-        'flex-col',
-        'space-y-2',
-        'h-full', // Faz com que o card ocupe toda a altura disponível no contêiner pai
-        'min-h-[250px]', // Define uma altura mínima para os cards, para consistência visual
-        'w-full' // Garante que o card ocupe toda a largura do seu contêiner
-      )
-
-      const siteLabel = document.createElement('p')
-      siteLabel.classList.add('text-sm', 'font-medium', 'text-gray-300')
-      siteLabel.textContent = `${site.badSite} → ${site.redirectTo}`
-
-      // Campo de entrada para o tempo
-      const timeInput = document.createElement('input')
-      timeInput.type = 'number'
-      timeInput.value = site.timeLimit
-      timeInput.classList.add(
-        'w-full',
-        'px-3',
-        'py-2',
-        'mt-2',
-        'bg-gray-600',
-        'rounded-md',
-        'text-gray-200',
-        'focus:outline-none',
-        'focus:ring-2',
-        'focus:ring-blue-500'
-      )
-
-      // Botão "Salvar"
-      const saveButton = document.createElement('button')
-      saveButton.textContent = 'Salvar'
-      saveButton.classList.add(
-        'w-full',
-        'py-2',
-        'bg-blue-500',
-        'hover:bg-blue-600',
-        'rounded-md',
-        'font-semibold',
-        'text-white',
-        'transition',
-        'duration-150',
-        'ease-in-out'
-      )
-
-      saveButton.addEventListener('click', () => {
-        atualizarTempoSite(index, timeInput.value)
+      // Coluna de Ativo
+      const activeCell = document.createElement('td')
+      activeCell.classList.add('py-2')
+      const activeSwitch = document.createElement('input')
+      activeSwitch.type = 'checkbox'
+      activeSwitch.checked = site.active
+      activeSwitch.addEventListener('change', () => {
+        atualizarStatusAtivo(index, activeSwitch.checked)
       })
+      activeCell.appendChild(activeSwitch)
 
-      // Botão de edição do URL de redirecionamento
-      const editButton = document.createElement('button')
-      editButton.innerHTML = '🖊'
-      editButton.classList.add(
-        'text-blue-400',
-        'hover:text-blue-600',
-        'transition',
-        'duration-150',
-        'ease-in-out',
-        'mx-1',
-        'text-xl',
-        'p-2',
-        'rounded-full'
-      )
+      // Coluna de Nome
+      const nameCell = document.createElement('td')
+      nameCell.classList.add('py-2')
+      nameCell.textContent = site.name
 
-      editButton.addEventListener('click', () => {
-        const novoRedirectTo = prompt(
-          'Digite o novo URL de redirecionamento:',
-          site.redirectTo
-        )
-        if (novoRedirectTo) {
-          atualizarRedirectTo(index, novoRedirectTo)
-        }
-      })
+      // Coluna de Grupo
+      const groupCell = document.createElement('td')
+      groupCell.classList.add('py-2')
+      groupCell.textContent = site.group || '-'
 
-      // Botão de exclusão do site
+      // Coluna de URL Fragmento
+      const urlCell = document.createElement('td')
+      urlCell.classList.add('py-2')
+      urlCell.textContent = site.badSite
+
+      // Coluna de Tempo Limite
+      const timeLimitCell = document.createElement('td')
+      timeLimitCell.classList.add('py-2')
+      timeLimitCell.textContent = site.timeLimit
+
+      // Coluna de URL de Redirect
+      const redirectCell = document.createElement('td')
+      redirectCell.classList.add('py-2')
+      redirectCell.textContent = site.redirectTo
+
+      // Botão de Excluir (visível apenas ao passar o mouse)
+      const deleteCell = document.createElement('td')
+      deleteCell.classList.add('py-2', 'text-right')
       const deleteButton = document.createElement('button')
       deleteButton.innerHTML = '🗑'
       deleteButton.classList.add(
@@ -108,38 +62,195 @@ function carregarSitesConfigurados() {
         'hover:text-red-600',
         'transition',
         'duration-150',
-        'ease-in-out',
-        'mx-1',
-        'text-xl',
-        'p-2',
-        'rounded-full'
+        'ease-in-out'
       )
-
-      deleteButton.addEventListener('click', () => {
-        if (confirm('Tem certeza que deseja excluir este site?')) {
-          excluirSite(index)
+      deleteButton.addEventListener('click', event => {
+        event.stopPropagation() // Prevenir o clique de abrir o modal
+        if (confirm('Tem certeza que deseja excluir esta regra?')) {
+          excluirRegra(index)
         }
       })
 
-      // Contêiner para os botões de edição e exclusão
-      const buttonContainer = document.createElement('div')
-      buttonContainer.classList.add('flex', 'justify-between', 'mt-2')
-      buttonContainer.appendChild(editButton)
-      buttonContainer.appendChild(deleteButton)
+      deleteCell.appendChild(deleteButton)
 
-      listItem.appendChild(siteLabel)
-      listItem.appendChild(timeInput)
-      listItem.appendChild(saveButton)
-      listItem.appendChild(buttonContainer)
+      // Adiciona evento de clique para abrir o popup de edição
+      row.addEventListener('click', () => {
+        abrirPopupEdicao(site, index)
+      })
 
-      // Adicionar o listItem ao seu contêiner
-      listItemContainer.appendChild(listItem)
-
-      // Adicionar o contêiner ao configList
-      configList.appendChild(listItemContainer)
+      row.appendChild(activeCell)
+      row.appendChild(nameCell)
+      row.appendChild(groupCell)
+      row.appendChild(urlCell)
+      row.appendChild(timeLimitCell)
+      row.appendChild(redirectCell)
+      row.appendChild(deleteCell)
+      configList.appendChild(row)
     })
   })
 }
+
+// Função para abrir um popup de edição
+function abrirPopupEdicao(site, index) {
+  const popup = criarPopup('Edit Rule', site)
+
+  // Botão salvar edição
+  document.getElementById('saveEdit').addEventListener('click', () => {
+    const updatedSite = {
+      name: document.getElementById('editName').value,
+      badSite: document.getElementById('editBadSite').value,
+      timeLimit: parseInt(document.getElementById('editTimeLimit').value, 10),
+      redirectTo: document.getElementById('editRedirectTo').value,
+      active: document.getElementById('editActive').checked,
+      group: document.getElementById('editGroup').value || '-',
+    }
+    atualizarRegra(index, updatedSite)
+    fecharPopup(popup)
+  })
+
+  // Botão cancelar
+  document.getElementById('cancelEdit').addEventListener('click', () => {
+    fecharPopup(popup)
+  })
+}
+
+// Função para abrir um popup para adicionar uma nova regra
+function abrirPopupAdicionar() {
+  const popup = criarPopup('Add New Rule', {
+    name: '',
+    badSite: '',
+    timeLimit: 60,
+    redirectTo: '',
+    active: false,
+    group: '',
+  })
+
+  // Botão salvar nova regra
+  document.getElementById('saveEdit').addEventListener('click', () => {
+    const newSite = {
+      name: document.getElementById('editName').value,
+      badSite: document.getElementById('editBadSite').value,
+      timeLimit: parseInt(document.getElementById('editTimeLimit').value, 10),
+      redirectTo: document.getElementById('editRedirectTo').value,
+      active: document.getElementById('editActive').checked,
+      group: document.getElementById('editGroup').value || '-',
+    }
+    adicionarRegra(newSite)
+    fecharPopup(popup)
+  })
+
+  // Botão cancelar
+  document.getElementById('cancelEdit').addEventListener('click', () => {
+    fecharPopup(popup)
+  })
+}
+
+// Função para criar um popup de edição/adicionar
+function criarPopup(titulo, site) {
+  const popup = document.createElement('div')
+  popup.classList.add(
+    'fixed',
+    'top-0',
+    'left-0',
+    'w-full',
+    'h-full',
+    'bg-gray-900',
+    'bg-opacity-75',
+    'flex',
+    'justify-center',
+    'items-center'
+  )
+
+  const popupContent = document.createElement('div')
+  popupContent.classList.add('bg-gray-800', 'p-6', 'rounded-md', 'w-96')
+
+  popupContent.innerHTML = `
+    <h2 class="text-lg font-semibold mb-4">${titulo}</h2>
+    <label class="block mb-2">Name</label>
+    <input type="text" value="${
+      site.name
+    }" id="editName" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
+    <label class="block mb-2">Group</label>
+    <input type="text" value="${
+      site.group || ''
+    }" id="editGroup" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
+    <label class="block mb-2">URL Fragment</label>
+    <input type="text" value="${
+      site.badSite
+    }" id="editBadSite" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
+    <label class="block mb-2">Time Limit (seconds)</label>
+    <input type="number" value="${
+      site.timeLimit
+    }" id="editTimeLimit" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
+    <label class="block mb-2">Redirect URL</label>
+    <input type="text" value="${
+      site.redirectTo
+    }" id="editRedirectTo" class="w-full p-2 mb-4 bg-gray-700 rounded-md">
+    <label class="block mb-2">Active</label>
+    <input type="checkbox" id="editActive" ${
+      site.active ? 'checked' : ''
+    } class="mb-4">
+
+    <div class="flex justify-end space-x-4">
+      <button id="cancelEdit" class="px-4 py-2 bg-gray-600 text-white rounded-md">Cancel</button>
+      <button id="saveEdit" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Save</button>
+    </div>
+  `
+
+  popup.appendChild(popupContent)
+  document.body.appendChild(popup)
+
+  return popup
+}
+
+// Função para fechar o popup
+function fecharPopup(popup) {
+  document.body.removeChild(popup)
+}
+
+// Função para adicionar uma nova regra ao armazenamento
+function adicionarRegra(newSite) {
+  chrome.storage.sync.get({ sites: [] }, data => {
+    data.sites.push(newSite)
+    chrome.storage.sync.set({ sites: data.sites }, () => {
+      alert('Nova regra adicionada com sucesso!')
+      carregarSitesConfigurados()
+    })
+  })
+}
+
+// Função para atualizar uma regra no armazenamento
+function atualizarRegra(index, updatedSite) {
+  chrome.storage.sync.get({ sites: [] }, data => {
+    data.sites[index] = updatedSite
+    chrome.storage.sync.set({ sites: data.sites }, () => {
+      alert('Regra atualizada com sucesso!')
+      carregarSitesConfigurados()
+    })
+  })
+}
+
+// Função para atualizar o status de ativo
+function atualizarStatusAtivo(index, isActive) {
+  chrome.storage.sync.get({ sites: [] }, data => {
+    data.sites[index].active = isActive
+    chrome.storage.sync.set({ sites: data.sites }, () => {
+      carregarSitesConfigurados()
+    })
+  })
+}
+
+// Função para excluir uma regra do armazenamento
+function excluirRegra(index) {
+  chrome.storage.sync.get({ sites: [] }, data => {
+    data.sites.splice(index, 1)
+    chrome.storage.sync.set({ sites: data.sites }, () => {
+      alert('Regra excluída com sucesso!')
+      carregarSitesConfigurados()
+    })
+  })
+}
+
 // Função para atualizar o tempo de redirecionamento no armazenamento
 function atualizarTempoSite(index, novoTempo) {
   chrome.storage.sync.get({ sites: [] }, data => {

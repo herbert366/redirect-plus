@@ -3,17 +3,58 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Edit Redirect Rules</title>
-    <link href="./output.css" rel="stylesheet" />
+    <title>True Redirect</title>
+    <link href="/src/output.css" rel="stylesheet" />
   </head>
-  <body class="bg-gray-800 text-white p-4">
-    <h2 class="text-lg font-semibold mb-4">Edit Redirect Rules</h2>
+  <body class="bg-gray-900 text-white h-screen flex">
+    <!-- Barra Lateral -->
+    <aside class="w-64 bg-gray-800 p-4 h-full flex flex-col fixed">
+      <h1 class="text-2xl font-bold mb-8">True Redirect</h1>
+      <nav>
+        <ul class="space-y-4">
+          <li><a href="#" class="text-gray-400 hover:text-white">Rules</a></li>
+          <li>
+            <a href="#" class="text-gray-400 hover:text-white">Settings</a>
+          </li>
+          <li><a href="#" class="text-gray-400 hover:text-white">Help</a></li>
+          <li><a href="#" class="text-gray-400 hover:text-white">Donate</a></li>
+        </ul>
+      </nav>
+    </aside>
 
-    <div class="container mx-auto p-4">
-      <ul id="configList" class="flex flex-wrap gap-4 justify-evenly">
-        <!-- Os sites configurados para edição serão listados aqui -->
-      </ul>
-    </div>
+    <!-- Conteúdo Principal -->
+    <main class="flex-1 ml-64 p-6 overflow-y-auto">
+      <!-- Cabeçalho -->
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-semibold">Rules</h2>
+        <button
+          id="addRuleButton"
+          class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+        >
+          + Add Rule
+        </button>
+      </div>
+
+      <!-- Lista de Regras -->
+      <div class="bg-gray-800 p-4 rounded-md">
+        <table class="w-full text-left table-auto">
+          <thead>
+            <tr class="text-gray-400">
+              <th class="py-2">Active</th>
+              <th class="py-2">Name</th>
+              <th class="py-2">Group</th>
+              <th class="py-2">URL Fragment</th>
+              <th class="py-2">Time Limit</th>
+              <th class="py-2">Redirect URL</th>
+              <th class="py-2"></th>
+            </tr>
+          </thead>
+          <tbody id="configList" class="text-white">
+            <!-- As regras serão adicionadas aqui dinamicamente -->
+          </tbody>
+        </table>
+      </div>
+    </main>
 
     <script src="config.js"></script>
   </body>
