@@ -33,6 +33,9 @@ setInterval(() => {
         if (!activeTab) return
 
         const currentUrl = activeTab.url
+        console.log(
+          `1° Check: Verificando se a URL ${currentUrl} está na lista de bad sites.`
+        )
         const data = await new Promise(resolve => {
           chrome.storage.sync.get({ sites: [] }, resolve)
         })
@@ -42,6 +45,9 @@ setInterval(() => {
         )
 
         if (siteConfig) {
+          console.log(
+            `2° Check: A URL está na lista de bad sites. Iniciando cronômetro.`
+          )
           iniciarCronometro(
             activeTab.id,
             siteConfig.badSite,
@@ -49,6 +55,9 @@ setInterval(() => {
             siteConfig.timeLimit
           )
         } else {
+          console.log(
+            `URL não está na lista de bad sites. Nenhuma ação necessária.`
+          )
           pararCronometro(activeTab.id)
         }
       })
@@ -73,9 +82,11 @@ async function iniciarCronometro(tabId, site, redirectTo, timeLimit) {
       elapsedTime: 0,
       startTime: Date.now(),
     }
+    console.log(`Novo estado criado para o site: ${site}`)
   } else {
     // Ajusta o startTime baseado no tempo decorrido
     timerState.startTime = Date.now() - timerState.elapsedTime * 1000
+    console.log(`Recuperado estado existente para o site: ${site}`)
   }
 
   // Salva o estado inicial/atualizado
@@ -94,16 +105,21 @@ async function iniciarCronometro(tabId, site, redirectTo, timeLimit) {
       `Elapsed time for site ${site}: ${timerState.elapsedTime} seconds`
     )
 
+    // 3° Check: se o tempo total gasto é igual ao tempo limite
     if (timerState.elapsedTime >= timeLimit) {
-      console.log(
-        `Time limit reached for site ${site}. Redirecting to ${redirectTo}.`
-      )
+      console.log(`3° Check: Tempo limite atingido para o site ${site}.`)
+
+      // 4° Check: Reseta o tempo total gasto
+      timerState.elapsedTime = 0
+      saveTimerState(tabId, timerState)
+      console.log(`4° Check: Tempo total gasto resetado para ${site}.`)
 
       // Limpa o estado do timer apenas quando atinge o limite
       clearTimerState(tabId)
 
       // Para o timer e redireciona
       pararCronometro(tabId)
+      console.log(`Redirecionando para ${redirectTo}.`)
       chrome.tabs.update(tabId, { url: redirectTo })
     }
   }, 1000)
@@ -134,6 +150,9 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       const siteConfig = data.sites.find(site => tab.url.includes(site.badSite))
 
       if (siteConfig && tab.url.includes(timerState.site)) {
+        console.log(
+          `5° Check: A URL redirecionada ainda está no bad site. Reiniciando cronômetro.`
+        )
         iniciarCronometro(
           tabId,
           siteConfig.badSite,
@@ -142,27 +161,5 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         )
       }
     }
-  }
-})
-
-// Adiciona listener para mensagens do content script
-chrome.runtime.onMessage.addListener((message, sender) => {
-  if (message.action === 'startTimer') {
-    iniciarCronometro(
-      sender.tab.id,
-      message.site,
-      message.redirectTo,
-      message.timeLimit
-    )
-  } else if (message.action === 'stopTimer') {
-    pararCronometro(sender.tab.id)
-  }
-})
-
-// Adiciona listener para mudanças de foco na janela
-chrome.windows.onFocusChanged.addListener(windowId => {
-  if (windowId === chrome.windows.WINDOW_ID_NONE) {
-    // Nenhuma janela está focada, parar todos os cronômetros ativos
-    Object.keys(timers).forEach(tabId => pararCronometro(parseInt(tabId)))
   }
 })
